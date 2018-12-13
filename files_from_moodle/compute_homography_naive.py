@@ -1,5 +1,5 @@
 import numpy as np
-import cv2
+from PIL import Image
 from matplotlib import pyplot as plt
 def compute_homography_naive(src, dst):
 
@@ -93,7 +93,7 @@ def forward_image_mapping(H, src_img):
         if (indexes[2]>=0 and indexes[2]<W) and (indexes[3]>=0 and indexes[3]<H):
             print('indexes are xs,ys,xd,ys {}'.format(indexes))
             target_img[indexes[3],indexes[2],:] = src_img_np[indexes[1],indexes[0],:]
+    target_img = target_img.astype(int)
     plt.imshow(target_img)
+    plt.show()
 
-
-    print("Dana")
