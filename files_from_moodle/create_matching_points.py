@@ -35,7 +35,7 @@ def selectROI(event, x, y, flags, param ):
 cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
 cv2.resizeWindow('frame', 800, 600)
 cv2.setMouseCallback("frame", selectROI, param=1)
-cv2.imshow("frame", frame)
+#cv2.imshow("frame", frame)
 
 
 cv2.namedWindow("frame2", cv2.WINDOW_NORMAL)

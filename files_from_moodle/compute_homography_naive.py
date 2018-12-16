@@ -1,8 +1,10 @@
 import numpy as np
 from PIL import Image
 from matplotlib import pyplot as plt
-def compute_homography_naive(src, dst):
 
+def compute_homography_naive(src, dst):
+    """Input: Src and destination matching 2*n points
+       Output: Homography matrix found by solving P' = HP according to least squares"""
     stack = np.vstack((src, dst))
 
     for i, c in enumerate(stack.T):
@@ -38,7 +40,7 @@ def compute_homography_naive(src, dst):
 
     return H
 
-
+"""wrong - to delete"""
 def forward_mapping2(H, src):
 
     a = np.ones((1, src.shape[1]))
@@ -58,7 +60,8 @@ def forward_mapping2(H, src):
     return f_map
 
 def forward_mapping(H, src):
-
+    """ Input : A homography matrix 3*3, src points to transfer as a 3*n array
+        output: dst points as a 3*n array"""
     a = np.ones((1, src.shape[1]))
     D3_vecs = np.vstack((src, a))
 
@@ -71,6 +74,8 @@ def forward_mapping(H, src):
     return f_map
 
 def forward_image_mapping(H, src_img):
+    """ Input: A homography matrix 3*3, src img  to transfer
+        Output: dst image (after transformation) scaled according to destination max coordinates"""
     src_img_np = np.asarray(src_img)
     img = np.asarray(src_img[:,:,1])
     ys , xs = np.where(img!=None)
@@ -83,16 +88,24 @@ def forward_image_mapping(H, src_img):
     target_ind = forward_mapping(H, orig_ind)
     target_ind = target_ind.round()
     target_ind = target_ind.astype(int)
-    target_img = np.zeros((src_img_np.shape))
 
-    #insert pixel values
-    H,W,D = src_img_np.shape
+    """Shift all pixel locations by a constant to avoid negative pixel location values """
+    min_i_new = min(target_ind[0,:])
+    min_j_new = min(target_ind[1,:])
+    if min_i_new < 0:
+        target_ind[0,:] += -1 * min(target_ind[0,:])
+    if min_j_new < 0:
+        target_ind[1, :] += -1 * min(target_ind[1, :])
+    max_i_new = max(target_ind[0, :])
+    max_j_new = max(target_ind[1, :])
+    #H,W,D = src_img_np.shape
     mapping = np.vstack((orig_ind,target_ind))
-    mapping_sec = mapping[:,:10000]
+    """Create a large enough target image to avoid loosing any original image pixels"""
+    target_img = np.zeros((max_j_new+1,max_i_new+1,src_img_np.shape[2]))
     for indexes in mapping.T:
-        if (indexes[2]>=0 and indexes[2]<W) and (indexes[3]>=0 and indexes[3]<H):
-            print('indexes are xs,ys,xd,ys {}'.format(indexes))
-            target_img[indexes[3],indexes[2],:] = src_img_np[indexes[1],indexes[0],:]
+        #if (indexes[2]>=0 and indexes[2]<W) and (indexes[3]>=0 and indexes[3]<H):
+        print('indexes are xs,ys,xd,ys {}'.format(indexes))
+        target_img[indexes[3],indexes[2],:] = src_img_np[indexes[1],indexes[0],:]
     target_img = target_img.astype(int)
     plt.imshow(target_img)
     plt.show()
