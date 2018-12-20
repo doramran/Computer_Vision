@@ -4,7 +4,7 @@ import scipy.io
 import time
 import os
 import cv2
-from compute_homography_naive import compute_homography_naive, forward_mapping, forward_image_mapping
+from compute_homography_naive import compute_homography_naive, forward_mapping, forward_image_mapping,test_homography,get_all_image_indices
 
 #from ex2_functions import *
 def tic():
@@ -15,8 +15,8 @@ def toc(t):
 ##########################################################
 # Don't forget to fill in your IDs!!!
 # students' IDs:
-ID1 = 123456789
-ID2 = 987654321
+ID1 = 302236054
+ID2 = 302824099
 ##########################################################
 
 
@@ -34,26 +34,22 @@ match_p_dst = matches['match_p_dst'].astype(float)
 match_p_src = matches['match_p_src'].astype(float)
 
 matches2 = scipy.io.loadmat(os.path.join(path, 'matches')) #matching points and some outliers
-match_p_dst2 = matches['match_p_dst'].astype(float)
-match_p_src2 = matches['match_p_src'].astype(float)
+match_p_dst2 = matches2['match_p_dst'].astype(float)
+match_p_src2 = matches2['match_p_src'].astype(float)
 
 # Compute naive homography
 tt = time.time()
 H_naive = compute_homography_naive(match_p_src, match_p_dst)
-f_map = forward_mapping(H_naive, match_p_src)
-
-
+H_naive_2 = compute_homography_naive(match_p_src2, match_p_dst2)
+mp_src , q = get_all_image_indices(H_naive,img_src)
 print('Naive Homography {:5.4f} sec'.format(toc(tt)))
-print(H_naive)
-
-forward_image_mapping(H_naive, img_src)
-
-
+mp_dst = forward_mapping(H_naive_2, mp_src)
+#forward_image_mapping(H_naive_2, img_src)
 
 
 # Test naive homography
 tt = time.time()
-fit_percent, dist_mse, inliers_idx= test_homography(H_naive, match_p_src, match_p_dst, max_err)
+fit_percent, dist_mse, inliers_idx = test_homography(H_naive, mp_src, mp_dst, max_err)
 print('Naive Homography Test {:5.4f} sec'.format(toc(tt)))
 print([fit_percent, dist_mse])
 

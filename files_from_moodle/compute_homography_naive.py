@@ -1,7 +1,7 @@
 import numpy as np
 from PIL import Image
 from matplotlib import pyplot as plt
-
+import math
 def compute_homography_naive(src, dst):
     """Input: Src and destination matching 2*n points
        Output: Homography matrix found by solving P' = HP according to least squares"""
@@ -35,7 +35,7 @@ def compute_homography_naive(src, dst):
     h_tag[8] = 1
     H = np.reshape(h_tag, (3,3))
     '''FOR COMPARISION '''
-    #H2 = (np.linalg.lstsq(M, b, rcond=-1)[0])
+    H2 = (np.linalg.lstsq(M, b, rcond=-1)[0])
     #H2 = np.reshape(H, (3, 3))
 
     return H
@@ -64,7 +64,6 @@ def forward_mapping(H, src):
         output: dst points as a 3*n array"""
     a = np.ones((1, src.shape[1]))
     D3_vecs = np.vstack((src, a))
-
     D3_vecs = D3_vecs.T
     dst_vecs = D3_vecs.dot(H.T)
     dst_vecs = dst_vecs.T
@@ -72,41 +71,72 @@ def forward_mapping(H, src):
     f_map = dst_vecs[:2, :]/dst_vecs[2,:]
 
     return f_map
-
-def forward_image_mapping(H, src_img):
-    """ Input: A homography matrix 3*3, src img  to transfer
-        Output: dst image (after transformation) scaled according to destination max coordinates"""
-    src_img_np = np.asarray(src_img)
+def get_all_image_indices(HOLOG,src_img):
     img = np.asarray(src_img[:,:,1])
     ys , xs = np.where(img!=None)
     xs = np.asarray(xs)
     ys = np.asarray(ys)
     xs = np.reshape(xs,(xs.shape[0],1)).T
     ys = np.reshape(ys,(ys.shape[0],1)).T
-
     orig_ind = np.vstack((xs,ys))
-    target_ind = forward_mapping(H, orig_ind)
+    target_ind = forward_mapping(HOLOG, orig_ind)
     target_ind = target_ind.round()
     target_ind = target_ind.astype(int)
+    return orig_ind,target_ind
 
-    """Shift all pixel locations by a constant to avoid negative pixel location values """
-    min_i_new = min(target_ind[0,:])
-    min_j_new = min(target_ind[1,:])
-    if min_i_new < 0:
-        target_ind[0,:] += -1 * min(target_ind[0,:])
-    if min_j_new < 0:
-        target_ind[1, :] += -1 * min(target_ind[1, :])
-    max_i_new = max(target_ind[0, :])
-    max_j_new = max(target_ind[1, :])
-    #H,W,D = src_img_np.shape
+def forward_image_mapping(HOLOG, src_img):
+    """ Input: A homography matrix 3*3, src img  to transfer
+        Output: dst image (after transformation) scaled according to destination max coordinates"""
+    q,target_ind = get_all_image_indices(HOLOG,src_img)
+    src_img_np = np.asarray(src_img)
+    rows,cols,D = src_img_np.shape
+    corners = np.zeros((2,4))
+    cor_src = np.zeros((3,4))
+    cor_src[:, 0] = np.array([1,1,1]).T
+    cor_src[:, 1] = np.array([1,rows,1]).T
+    cor_src[:, 2] = np.array([cols,1,1]).T
+    cor_src[:, 3] = np.array([cols,rows,1]).T
+    cor_dst = np.dot(HOLOG,cor_src)
+    corners[0,:] = cor_dst[0,:]/cor_dst[2,:]
+    corners[1, :] = cor_dst[1, :] / cor_dst[2, :]
+    x1 = math.floor(min(corners[0,:]))
+    x2 = math.ceil(max(corners[0, :]))
+    y1 = math.floor(min(corners[1, :]))
+    y2 = math.ceil(max(corners[1, :]))
+    width = x2-x1
+    hight = y2-y1
+    target_img = np.zeros((hight+1,width+1,D))
+    """limit target pixel values in case of outliers in section A"""
+    row1 = target_ind[0,:]
+    row1 = row1-x1
+    row1 = np.array([min(max(row1[i], 1), width) for i in range(row1.shape[0])])
+    row2 = target_ind[1, :]
+    row2 = row2 - y1
+    row2 = np.array([min(max(row2[i], 1), hight) for i in range(row2.shape[0])])
+    target_ind = np.vstack((row1,row2))
+    target_ind = target_ind.astype(int)
     mapping = np.vstack((orig_ind,target_ind))
-    """Create a large enough target image to avoid loosing any original image pixels"""
-    target_img = np.zeros((max_j_new+1,max_i_new+1,src_img_np.shape[2]))
+
     for indexes in mapping.T:
-        #if (indexes[2]>=0 and indexes[2]<W) and (indexes[3]>=0 and indexes[3]<H):
+        #if (indexes[2]>=0 and indexes[2]<max_j_new) and (indexes[3]>=0 and indexes[3]<max_i_new):
         print('indexes are xs,ys,xd,ys {}'.format(indexes))
         target_img[indexes[3],indexes[2],:] = src_img_np[indexes[1],indexes[0],:]
     target_img = target_img.astype(int)
     plt.imshow(target_img)
     plt.show()
+    return mapping
+
+
+def test_homography(H_naive, img_src, mp_dst, max_err):
+    """Input: Src and dest index arrays before and after homogrpahy as a 2d ndarrays (i,j) in each coloumn
+       Output: percentage of inliers, average distance error of the inlieres and inliers indices"""
+
+    mp_dst_on_naive = forward_mapping(H_naive, img_src)
+    temp = (mp_dst_on_naive-mp_dst)*(mp_dst_on_naive-mp_dst)
+    error_vec = np.sqrt(np.sum(temp,axis =0))
+    dist_mse = sum(err for err in error_vec if err <= max_err)/mp_dst_on_naive.shape[1]
+    inliers_idx = [i for i in range(error_vec.shape[0]) if error_vec[i] <= max_err]
+    fit_percent = len(inliers_idx)/mp_dst_on_naive.shape[1]
+    return fit_percent,dist_mse,inliers_idx
+
 

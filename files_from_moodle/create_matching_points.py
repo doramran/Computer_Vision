@@ -41,7 +41,7 @@ cv2.setMouseCallback("frame", selectROI, param=1)
 cv2.namedWindow("frame2", cv2.WINDOW_NORMAL)
 cv2.resizeWindow('frame2', 800, 600)
 cv2.setMouseCallback("frame2", selectROI, param=2)
-cv2.imshow("frame2", frame2)
+#cv2.imshow("frame2", frame2)
 
 # keep looping until 50 points have been selected
 while (len(match_p_src)+len(match_p_dst)) < 50:
