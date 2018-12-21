@@ -88,7 +88,7 @@ def get_all_image_indices(HOLOG,src_img):
 def forward_image_mapping(HOLOG, src_img):
     """ Input: A homography matrix 3*3, src img  to transfer
         Output: dst image (after transformation) scaled according to destination max coordinates"""
-    orig_ind,target_ind = get_all_image_indices(HOLOG,src_img)
+    orig_ind , target_ind = get_all_image_indices(HOLOG,src_img)
     src_img_np = np.asarray(src_img)
     rows,cols,D = src_img_np.shape
     corners = np.zeros((2,4))
@@ -128,16 +128,16 @@ def forward_image_mapping(HOLOG, src_img):
     return mapping
 
 
-def test_homography(H, img_src, mp_dst_naive, max_err):
+def test_homography(H, mp_src, mp_dst, max_err):
     """Input: Src and dest index arrays before and after homogrpahy as a 2d ndarrays (i,j) in each coloumn
        Output: percentage of inliers, average distance error of the inlieres and inliers indices"""
 
-    mp_dst_not_naive = forward_mapping(H, img_src)
-    temp = (mp_dst_naive-mp_dst_not_naive)*(mp_dst_naive-mp_dst_not_naive)
+    mp_dst_2 = forward_mapping(H, mp_src)
+    temp = (mp_dst_2-mp_dst)*(mp_dst_2-mp_dst)
     error_vec = np.sqrt(np.sum(temp,axis =0))
-    dist_mse = sum(err for err in error_vec if err <= max_err)/mp_dst_not_naive.shape[1]
-    inliers_idx = [i for i in range(mp_dst_not_naive.shape[0]) if error_vec[i] <= max_err]
-    fit_percent = len(inliers_idx)/mp_dst_not_naive.shape[1]
+    dist_mse = sum(err for err in error_vec if err <= max_err)/mp_dst_2.shape[1]
+    inliers_idx = [i for i in range(error_vec.shape[0]) if error_vec[i] <= max_err]
+    fit_percent = len(inliers_idx)/mp_dst_2.shape[1]
     return fit_percent,dist_mse,inliers_idx
 
 
@@ -146,7 +146,7 @@ def compute_homography(mp_src, mp_dst, inliers_percent, max_err,):
                  inliers_percent: value describing the inliers percent in match points given, max_err- max dist in pixel
                   for which we consider a transformation to be valid """
     p = 0.99
-    n = 4
+    n = 10
     w = inliers_percent
     k = np.log(1-p)/np.log(1-w**n)
     max_inl_len = 0
@@ -162,6 +162,35 @@ def compute_homography(mp_src, mp_dst, inliers_percent, max_err,):
             best_H = H
     return H
 
+def Backward_Mapping(H,src_img):
+    src_img_np = np.asarray(src_img)
+    rows,cols,D = src_img_np.shape
+    corners = np.zeros((2,4))
+    cor_src = np.zeros((3,4))
+    cor_src[:, 0] = np.array([1,1,1]).T
+    cor_src[:, 1] = np.array([1,rows,1]).T
+    cor_src[:, 2] = np.array([cols,1,1]).T
+    cor_src[:, 3] = np.array([cols,rows,1]).T
+    cor_dst = np.dot(H,cor_src)
+    corners[0,:] = cor_dst[0,:]/cor_dst[2,:]
+    corners[1, :] = cor_dst[1, :] / cor_dst[2, :]
+    x1 = math.floor(min(corners[0,:]))
+    x2 = math.ceil(max(corners[0, :]))
+    y1 = math.floor(min(corners[1, :]))
+    y2 = math.ceil(max(corners[1, :]))
+    width = x2-x1
+    hight = y2-y1
+    row1 = target_ind[0, :]
+    row1 = row1 - x1
+    row1 = np.array([min(max(row1[i], 1), width) for i in range(row1.shape[0])])
+    row2 = target_ind[1, :]
+    row2 = row2 - y1
+    row2 = np.array([min(max(row2[i], 1), hight) for i in range(row2.shape[0])])
+    target_ind = np.vstack((row1, row2))
+    target_ind = target_ind.astype(int)
+    H_inv = np.linalg.inv(H)
+    np.dot()
+    #mapping = np.vstack((orig_ind, target_ind))
 
 
 

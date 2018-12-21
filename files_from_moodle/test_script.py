@@ -41,16 +41,15 @@ match_p_src2 = matches2['match_p_src'].astype(float)
 
 tt = time.time()
 H_naive = compute_homography_naive(match_p_src, match_p_dst)
-H_naive_2 = compute_homography_naive(match_p_src2, match_p_dst2)
+H_2 = compute_homography_naive(match_p_src2, match_p_dst2)
 mp_src , mp_dst_naive = get_all_image_indices(H_naive,img_src)
 print('Naive Homography {:5.4f} sec'.format(toc(tt)))
-mp_dst = forward_mapping(H_naive_2, mp_src)
-#forward_image_mapping(H_naive_2, img_src)
+#forward_image_mapping(H_naive, img_src)
 
 
 # Test naive homography
 tt = time.time()
-fit_percent, dist_mse, inliers_idx = test_homography(H_naive, mp_src, mp_dst, max_err)
+fit_percent, dist_mse, inliers_idx = test_homography(H_naive, match_p_src, match_p_dst, max_err)
 print('Naive Homography Test {:5.4f} sec'.format(toc(tt)))
 print([fit_percent, dist_mse])
 
@@ -58,7 +57,8 @@ print([fit_percent, dist_mse])
 # Compute RANSAC homography
 tt = tic()
 #q8
-H_ransac_1 = compute_homography(mp_src, mp_dst, inliers_percent, max_err)
+H_ransac_1 = compute_homography(match_p_src, match_p_dst, inliers_percent, max_err)
+#forward_image_mapping(H_ransac_1, img_src)
 #q9
 H_ransac_2 = compute_homography(match_p_src2, match_p_dst2, inliers_percent, max_err)
 forward_image_mapping(H_ransac_2, img_src)
