@@ -2,6 +2,7 @@ import numpy as np
 from PIL import Image
 from matplotlib import pyplot as plt
 import math
+from random import randint
 def compute_homography_naive(src, dst):
     """Input: Src and destination matching 2*n points
        Output: Homography matrix found by solving P' = HP according to least squares"""
@@ -87,7 +88,7 @@ def get_all_image_indices(HOLOG,src_img):
 def forward_image_mapping(HOLOG, src_img):
     """ Input: A homography matrix 3*3, src img  to transfer
         Output: dst image (after transformation) scaled according to destination max coordinates"""
-    q,target_ind = get_all_image_indices(HOLOG,src_img)
+    orig_ind,target_ind = get_all_image_indices(HOLOG,src_img)
     src_img_np = np.asarray(src_img)
     rows,cols,D = src_img_np.shape
     corners = np.zeros((2,4))
@@ -127,16 +128,42 @@ def forward_image_mapping(HOLOG, src_img):
     return mapping
 
 
-def test_homography(H_naive, img_src, mp_dst, max_err):
+def test_homography(H, img_src, mp_dst_naive, max_err):
     """Input: Src and dest index arrays before and after homogrpahy as a 2d ndarrays (i,j) in each coloumn
        Output: percentage of inliers, average distance error of the inlieres and inliers indices"""
 
-    mp_dst_on_naive = forward_mapping(H_naive, img_src)
-    temp = (mp_dst_on_naive-mp_dst)*(mp_dst_on_naive-mp_dst)
+    mp_dst_not_naive = forward_mapping(H, img_src)
+    temp = (mp_dst_naive-mp_dst_not_naive)*(mp_dst_naive-mp_dst_not_naive)
     error_vec = np.sqrt(np.sum(temp,axis =0))
-    dist_mse = sum(err for err in error_vec if err <= max_err)/mp_dst_on_naive.shape[1]
-    inliers_idx = [i for i in range(error_vec.shape[0]) if error_vec[i] <= max_err]
-    fit_percent = len(inliers_idx)/mp_dst_on_naive.shape[1]
+    dist_mse = sum(err for err in error_vec if err <= max_err)/mp_dst_not_naive.shape[1]
+    inliers_idx = [i for i in range(mp_dst_not_naive.shape[0]) if error_vec[i] <= max_err]
+    fit_percent = len(inliers_idx)/mp_dst_not_naive.shape[1]
     return fit_percent,dist_mse,inliers_idx
+
+
+def compute_homography(mp_src, mp_dst, inliers_percent, max_err,):
+    """Input:Src and dest index arrays before and after homogrpahy as a 2d ndarrays (i,j) in each coloumn
+                 inliers_percent: value describing the inliers percent in match points given, max_err- max dist in pixel
+                  for which we consider a transformation to be valid """
+    p = 0.99
+    n = 4
+    w = inliers_percent
+    k = np.log(1-p)/np.log(1-w**n)
+    max_inl_len = 0
+    for i in range(int(round(k))):
+        idx = [randint(0, mp_src.shape[1]-1) for ind in range(4)]
+        source = np.take(mp_src,idx,axis = 1)
+        dest = np.take(mp_dst,idx,axis = 1)
+        H = compute_homography_naive(source, dest)
+        fit_percent, dist_mse, inliers_idx = test_homography(H, mp_src, mp_dst, max_err)
+        num_inl = len(inliers_idx)
+        if num_inl > max_inl_len:
+            max_inl_len = num_inl
+            best_H = H
+    return H
+
+
+
+
 
 
