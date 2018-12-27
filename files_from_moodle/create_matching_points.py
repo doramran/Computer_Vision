@@ -5,8 +5,8 @@ import scipy.io
 
 global source, dest, match_p_dst, match_p_src, frame, frame2
 
-source = cv2.imread('src_test.jpg')
-dest = cv2.imread('dst_test.jpg')
+source = cv2.imread('G1971625.jpg')
+dest = cv2.imread('G1971624.jpg')
 
 frame = source
 frame2 = dest
